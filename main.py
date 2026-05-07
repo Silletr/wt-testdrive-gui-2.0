@@ -25,28 +25,49 @@ in the Assets/ folder. The WT directory path is persisted in config.json
 next to this script.
 """
 
-import sys
-import os
+import datetime
 import json
 import math
-import re
-import webbrowser
-import urllib.request
+import os
 import random
+import re
+import sys
 import traceback
-import datetime
+import urllib.request
+import webbrowser
 
+from PyQt6.QtCore import QThread, QTimer, Qt, pyqtSignal
+from PyQt6.QtGui import QAction, QColor, QIcon, QPalette, QPixmap
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QListWidget, QListWidgetItem, QPushButton, QLabel,
-    QFileDialog, QMessageBox, QTabWidget, QComboBox, QGroupBox, QDialog, QGridLayout, QButtonGroup,
-    QInputDialog, QSlider, QSpinBox, QDoubleSpinBox, QDial, QCheckBox, QRadioButton
+    QApplication,
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QDial,
+    QDialog,
+    QDoubleSpinBox,
+    QFileDialog,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QSlider,
+    QSpinBox,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
-from PyQt6.QtGui import QIcon, QPixmap, QAction, QColor, QPalette
 
 
-# ── Crash Logger ─────────────────────────────────────────────────────────────
+#  ──────────────────────────────────── Crash Logger ─────────────────────────────────────
 # When running as a PyInstaller exe, __file__ points to the temp extraction
 # directory, not the exe's real location. Use sys.executable instead.
 if getattr(sys, 'frozen', False):
@@ -149,11 +170,11 @@ def _write_crash_log(exc_type, exc_value, exc_tb):
         while len(existing_logs) >= _MAX_CRASHES:
             os.remove(os.path.join(_LOGS_DIR, existing_logs.pop(0)))
 
-        timestamp     = datetime.datetime.now()
-        crash_log     = os.path.join(_LOGS_DIR, f"crash_{timestamp.strftime('%Y-%m-%d_%H-%M-%S')}.txt")
-        tb_lines      = traceback.format_exception(exc_type, exc_value, exc_tb)
-        tb_str        = "".join(tb_lines)
-        state_str     = _collect_app_state()
+        timestamp = datetime.datetime.now()
+        crash_log = os.path.join(_LOGS_DIR, f"crash_{timestamp.strftime('%Y-%m-%d_%H-%M-%S')}.txt")
+        tb_lines  = traceback.format_exception(exc_type, exc_value, exc_tb)
+        tb_str = "".join(tb_lines)
+        state_str = _collect_app_state()
 
         report = (
             f"{'=' * 60}\n"
@@ -198,18 +219,19 @@ def _crash_handler(exc_type, exc_value, exc_tb):
     sys.__excepthook__(exc_type, exc_value, exc_tb)
 
 
-# ── Path helpers ──────────────────────────────────────────────────────────────
+#  ──────────────────────────────────── Path helpers ─────────────────────────────────────
 def _app_dir():
     """Return the directory containing the exe (frozen) or this script (dev)."""
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
 
-# ── App Version ───────────────────────────────────────────────────────────────
+
+#  ───────────────────────────────────── App Version ─────────────────────────────────────
 APP_VERSION     = "2.51"
 _APP_VERSION_URL = "https://raw.githubusercontent.com/ask3lad/wt-testdrive-db/main/app_version.json"
 
-# ── War Thunder auto-detect paths ─────────────────────────────────────────────
+#  ──────────────────────────── War Thunder auto-detect paths ────────────────────────────
 _WT_SEARCH_PATHS = [
     r"C:/Program Files (x86)/Steam/steamapps/common/War Thunder",
     r"C:/Program Files/Steam/steamapps/common/War Thunder",
@@ -229,8 +251,8 @@ _WT_SEARCH_PATHS = [
     r"F:/Games/War Thunder",
 ]
 
-# ── Database Auto-Update ──────────────────────────────────────────────────────
-_DB_REPO_RAW    = "https://raw.githubusercontent.com/ask3lad/wt-testdrive-db/main"
+#  ──────────────────────────────── Database Auto-Update ─────────────────────────────────
+_DB_REPO_RAW = "https://raw.githubusercontent.com/ask3lad/wt-testdrive-db/main"
 _DB_VERSION_URL = f"{_DB_REPO_RAW}/db_version.json"
 _DB_FILES = [
     "Tank2.0_DB.json",
@@ -244,9 +266,12 @@ _DB_FILES = [
     "db_version.json",
 ]
 
-# ── Ammo pool alias map ───────────────────────────────────────────────────────
-# Maps DB ammo-name prefixes that don't match the blk caliber name to the
-# canonical pool key stored in ammo_limits.  Same logic as extract_ammo.py.
+
+#    ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+#    ┃                               Ammo pool alias map                               ┃
+#    ┃     Maps DB ammo-name prefixes that don't match the blk caliber name to the     ┃
+#    ┃    canonical pool key stored in ammo_limits.  Same logic as extract_ammo.py.    ┃
+#    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 _AMMO_POOL_ALIASES = {
     "NATO":          ["120mm"],
     "USSR":          ["125mm"],
@@ -275,7 +300,7 @@ def _ammo_pool_key(ammo_type, ammo_limits):
             return fallback
     return None
 
-# ── Themed Presets ────────────────────────────────────────────────────────────
+#  ─────────────────────────────────── Themed Presets ────────────────────────────────────
 _GROUND_PRESETS = [
     {
         "name":        "WW1",
@@ -411,7 +436,7 @@ class AppUpdateWorker(QThread):
     All errors are silently ignored.
     """
     update_available = pyqtSignal(str)  # remote version string
-    no_update        = pyqtSignal()
+    no_update = pyqtSignal()
 
     def run(self):
         try:
@@ -431,8 +456,7 @@ class AppUpdateWorker(QThread):
             pass
 
 
-# ── Shared Dialog ─────────────────────────────────────────────────────────────
-
+#  ━━━━━━━━━ Shared Dialog ━━━━━━━━━━
 class VehiclePickerDialog(QDialog):
     """
     A modal dialog for searching and selecting a vehicle from a list.
@@ -520,7 +544,7 @@ class VehiclePickerDialog(QDialog):
             self.accept()
 
 
-# ── Setup Wizard ──────────────────────────────────────────────────────────────
+#  ──────────────────────────────────── Setup Wizard ─────────────────────────────────────
 
 class SetupDialog(QDialog):
     """
@@ -575,7 +599,7 @@ class SetupDialog(QDialog):
 
         QTimer.singleShot(50, self._run_auto_detect)
 
-    # ── Helpers ───────────────────────────────────────────────────────────────
+    #  ─────────────────────────────────────── Helpers ───────────────────────────────────────
 
     def _reconnect(self, btn, fn):
         try:
@@ -598,8 +622,7 @@ class SetupDialog(QDialog):
         if path:
             self._try_path(path)
 
-    # ── Auto-detect ───────────────────────────────────────────────────────────
-
+    #  ────────── Auto-detect ───────────
     def _run_auto_detect(self):
         if self._old_dir:
             self._status_label.setText(
@@ -618,7 +641,7 @@ class SetupDialog(QDialog):
                 return
         self._set_state_not_found()
 
-    # ── States ────────────────────────────────────────────────────────────────
+    #  ─────────────────────────────────────── States ────────────────────────────────────────
 
     def _set_state_found(self, path):
         self._status_label.setText(f"✓ Found at:\n{path}")
@@ -672,7 +695,7 @@ class SetupDialog(QDialog):
         self._btn_discord.show()
 
 
-# ── Main Window ───────────────────────────────────────────────────────────────
+#  ───────────────────────────────────── Main Window ─────────────────────────────────────
 
 class WarThunderTestDriveGUI(QMainWindow):
     """
@@ -702,7 +725,7 @@ class WarThunderTestDriveGUI(QMainWindow):
                 "Download it from the Discord and place it next to the exe, then restart the app."
             )
             msg.addButton("Open Discord", QMessageBox.ButtonRole.AcceptRole).clicked.connect(
-                lambda: webbrowser.open("https://discord.com/invite/f3nsgypbh7")
+                webbrowser.open("https://discord.com/invite/f3nsgypbh7")
             )
             msg.addButton("Close", QMessageBox.ButtonRole.RejectRole)
             msg.exec()
@@ -712,11 +735,11 @@ class WarThunderTestDriveGUI(QMainWindow):
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
 
-        # ── Ground: file paths ────────────────────────────────────────────────
+        #  ───────────────────────────────── Ground: file paths ──────────────────────────────────
         self.test_drive_file = None
         self.test_drive_vehicle_file = None
 
-        # ── Ground: current mission state ─────────────────────────────────────
+        #  ──────────────────────────── Ground: current mission state ────────────────────────────
         self.Selected_Vehicle_ID = None
         self.Current_Test_Vehicle = None
         self.Current_Vehicle_ID = None
@@ -779,16 +802,16 @@ class WarThunderTestDriveGUI(QMainWindow):
         self.naval_rapid_fire_active = True
         self.naval_rapid_fire_time = 0.1
 
-        # ── Ground: databases ─────────────────────────────────────────────────
+        #  ────────────────────────────────── Ground: databases ──────────────────────────────────
         self.tank_data = []
         self.plane_data = []
         self.heli_data = []
 
-        # ── Naval: file paths ─────────────────────────────────────────────────
+        #  ────────────────────────────────── Naval: file paths ──────────────────────────────────
         self.naval_mission_file = None
         self.naval_vehicle_file = None
 
-        # ── Naval: current mission state ──────────────────────────────────────
+        #  ──────────────────────────── Naval: current mission state ─────────────────────────────
         self.naval_selected_vehicle_id = None
         self.naval_current_vehicle_id = None
         self.naval_current_weapons = None
@@ -812,11 +835,11 @@ class WarThunderTestDriveGUI(QMainWindow):
         self.naval_shooter_ids              = [""] * 8
         self.naval_shooter_current_disabled = [True] * 8
 
-        # ── Naval: databases ──────────────────────────────────────────────────
+        #  ────────────────────────────────── Naval: databases ───────────────────────────────────
         self.ship_data = []
         self.naval_plane_data = []
 
-        # ── DB auto-update ────────────────────────────────────────────────────
+        #  ─────────────────────────────────── DB auto-update ────────────────────────────────────
         self._local_db_version = 0
         self._db_worker  = None
         self._app_worker = None
@@ -827,7 +850,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         self._dark_mode = False
         self._custom_map = True
 
-        # ── Saved: recently used, favourites & user presets ───────────────────
+        #  ─────────────────── Saved: recently used, favourites & user presets ───────────────────
         self.ground_recently_used  = []
         self.ground_favourites     = []
         self.naval_recently_used   = []
@@ -842,7 +865,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         self._start_db_update_check()
         self._start_app_update_check()
 
-    # ── Menu ──────────────────────────────────────────────────────────────────
+    #  ──────────────────────────────────────── Menu ─────────────────────────────────────────
 
     def _build_menu(self):
         """Build the top menu bar with File, community actions, and Help."""
@@ -922,7 +945,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         self._custom_map_action.triggered.connect(self._toggle_custom_map)
         menubar.addAction(self._custom_map_action)
 
-    # ── UI Construction ───────────────────────────────────────────────────────
+    #  ─────────────────────────────────── UI Construction ───────────────────────────────────
 
     def _build_ui(self):
         """
@@ -981,7 +1004,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         self.apply_button.hide()
         main_layout.addWidget(self.apply_button)
 
-    # ── Ground: Tab — Vehicle ─────────────────────────────────────────────────
+    #  ──────────────────────────────── Ground: Tab — Vehicle ────────────────────────────────
 
     def _build_vehicle_tab(self):
         """
@@ -1113,7 +1136,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         layout.addLayout(right, 1)
         self.tab_widget.addTab(tab, "Vehicle")
 
-    # ── Ground: Tab — Ground Targets ──────────────────────────────────────────
+    #  ──────────────────────────── Ground: Tab — Ground Targets ─────────────────────────────
 
     def _build_mission_tab(self):
         """
@@ -1210,7 +1233,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         layout.addStretch()
         self.tab_widget.addTab(tab, "Ground Targets")
 
-    # ── Ground: Tab — Air Targets ─────────────────────────────────────────────
+    #  ────────────────────────────── Ground: Tab — Air Targets ──────────────────────────────
 
     def _build_air_tab(self):
         """
@@ -1265,7 +1288,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         layout.addStretch()
         self.tab_widget.addTab(tab, "Air && Naval Target")
 
-    # ── Ground: Tab — Saved ───────────────────────────────────────────────────
+    #  ───────────────────────────────── Ground: Tab — Saved ─────────────────────────────────
 
     def _build_ground_saved_tab(self):
         """Build the Saved tab for the ground mission (Recently Used, Favourites, Presets, Random)."""
@@ -1366,7 +1389,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         layout.addStretch()
         self.tab_widget.addTab(tab, "Garage")
 
-    # ── Ground: Tab — Experimental ───────────────────────────────────────────
+    #  ───────────────────────────── Ground: Tab — Experimental ──────────────────────────────
 
     def _build_ground_experimental_combined_tab(self):
         """Build the Experimental tab containing Performance Override and Weapon Override sub-tabs."""
@@ -1545,7 +1568,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         layout.addStretch()
         tw.addTab(tab, "Performance Override")
 
-    # ── Ground: Tab — Weapon Override [Experimental] ─────────────────────────
+    #  ──────────────────── Ground: Tab — Weapon Override [Experimental] ─────────────────────
 
     def _build_ground_weapon_override_tab(self, tw):
         """Build the Weapon Override [Experimental] tab for the ground mission."""
@@ -1640,7 +1663,7 @@ class WarThunderTestDriveGUI(QMainWindow):
 
         layout.addWidget(weapon_override_group)
 
-        # ── Velocity Override ──────────────────────────────────────────────────
+        #  ────────────────────────────────── Velocity Override ──────────────────────────────────
         velocity_group = QGroupBox("Velocity Override")
         v_layout = QVBoxLayout(velocity_group)
 
@@ -1846,7 +1869,7 @@ class WarThunderTestDriveGUI(QMainWindow):
             self.aircraft_weapon_override_name_label.setText(dialog.selected_name)
             self._populate_weapon_override_combo(self.aircraft_weapon_override_combo, dialog.selected_id, "AircraftWeapons2.0_DB.json")
 
-    # ── Naval: Tab — Experimental ─────────────────────────────────────────────
+    #  ────────────────────────────── Naval: Tab — Experimental ──────────────────────────────
 
     def _build_naval_experimental_tab(self):
         """Build the Experimental tab for the naval mission."""
@@ -1979,7 +2002,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         layout.addStretch()
         self.naval_tab_widget.addTab(tab, "Experimental")
 
-    # ── Naval: Tab — Bombarding Ships ────────────────────────────────────────
+    #  ──────────────────────────── Naval: Tab — Bombarding Ships ────────────────────────────
 
     def _build_naval_shooters_tab(self):
         """
@@ -2043,7 +2066,7 @@ class WarThunderTestDriveGUI(QMainWindow):
             self.naval_shooter_name_labels[index].setText(dialog.selected_name)
             self.load_image(dialog.selected_id, self.naval_shooter_image_labels[index], "Ship_Previews", size=60)
 
-    # ── Naval: Tab — Ship ─────────────────────────────────────────────────────
+    #  ────────────────────────────────── Naval: Tab — Ship ──────────────────────────────────
 
     def _build_naval_ship_tab(self):
         """
@@ -2141,7 +2164,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         layout.addLayout(right, 1)
         self.naval_tab_widget.addTab(tab, "Vessel")
 
-    # ── Naval: Tab — Naval Targets ────────────────────────────────────────────
+    #  ───────────────────────────── Naval: Tab — Naval Targets ──────────────────────────────
 
     def _build_naval_targets_tab(self):
         """
@@ -2195,7 +2218,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         layout.addStretch()
         self.naval_tab_widget.addTab(tab, "Naval Targets")
 
-    # ── Naval: Tab — Air & Moving Targets ─────────────────────────────────────
+    #  ────────────────────────── Naval: Tab — Air & Moving Targets ──────────────────────────
 
     def _build_naval_air_tab(self):
         """
@@ -2268,7 +2291,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         layout.addStretch()
         self.naval_tab_widget.addTab(tab, "Moving Targets")
 
-    # ── Naval: Tab — Saved ────────────────────────────────────────────────────
+    #  ───────────────────────────────── Naval: Tab — Saved ──────────────────────────────────
 
     def _build_naval_saved_tab(self):
         """Build the Saved tab for the naval mission (Recently Used, Favourites, Presets, Random)."""
@@ -2369,7 +2392,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         layout.addStretch()
         self.naval_tab_widget.addTab(tab, "Dock")
 
-    # ── Shared: Config ────────────────────────────────────────────────────────
+    #  ─────────────────────────────────── Shared: Config ────────────────────────────────────
 
     def check_config(self):
         """
@@ -2493,7 +2516,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         except Exception:
             pass
 
-    # ── Shared: WT Directory Setup ────────────────────────────────────────────
+    #  ───────────────────────────── Shared: WT Directory Setup ──────────────────────────────
 
     def _show_startup_prompt(self, old_dir=None):
         """
@@ -2628,7 +2651,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         self.mode_tabs.show()
         self.apply_button.show()
 
-    # ── Ground: UI Initialisation ─────────────────────────────────────────────
+    #  ────────────────────────────── Ground: UI Initialisation ──────────────────────────────
 
     def show_main_ui(self):
         """
@@ -2701,7 +2724,7 @@ class WarThunderTestDriveGUI(QMainWindow):
             self.naval_weapon_override_name_label.setText(donor_name)
             self._populate_weapon_override_combo(self.naval_weapon_override_combo, self.naval_weapon_override_current_donor_id, "NavalWeapons2.0_DB.json", self.naval_weapon_override_current_weapon_blk)
 
-    # ── Naval: UI Initialisation ──────────────────────────────────────────────
+    #  ────────────────────────────── Naval: UI Initialisation ───────────────────────────────
 
     def show_naval_ui(self):
         """
@@ -2763,7 +2786,7 @@ class WarThunderTestDriveGUI(QMainWindow):
             self.naval_shooter_name_labels[i].setText(name)
             self.load_image(uid or None, self.naval_shooter_image_labels[i], "Ship_Previews", size=60)
 
-    # ── Ground: .blk Reading ──────────────────────────────────────────────────
+    #  ──────────────────────────────── Ground: .blk Reading ─────────────────────────────────
 
     def find_current_test_vehicle(self):
         """
@@ -2949,7 +2972,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error reading ground mission file: {str(e)}")
 
-    # ── Naval: .blk Reading ───────────────────────────────────────────────────
+    #  ───────────────────────────────── Naval: .blk Reading ─────────────────────────────────
 
     def find_current_naval_vehicle(self):
         """
@@ -3084,7 +3107,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error reading naval mission file: {str(e)}")
 
-    # ── Shared: .blk Helpers ──────────────────────────────────────────────────
+    #  ──────────────────────────────── Shared: .blk Helpers ─────────────────────────────────
 
     def _read_field_in_block(self, content, block_name, field_key, search_start=0):
         """
@@ -3185,7 +3208,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         abs_end   = name_pos + tm_end
         return content[:abs_start] + new_line + content[abs_end:]
 
-    # ── Ground: Data Loading ──────────────────────────────────────────────────
+    #  ──────────────────────────────── Ground: Data Loading ─────────────────────────────────
 
     def load_tank_data(self, tank_db_path):
         """Load Tank2.0_DB.json and populate the ground vehicle list widget."""
@@ -3320,7 +3343,7 @@ class WarThunderTestDriveGUI(QMainWindow):
                 getattr(self, name_attr).setText(dialog.selected_name)
                 self.load_image(dialog.selected_id, getattr(self, img_attr), "Aircraft_Previews")
 
-    # ── Ground: Vehicle List Interaction ──────────────────────────────────────
+    #  ────────────────────────── Ground: Vehicle List Interaction ───────────────────────────
 
     def filter_vehicles(self):
         """Re-populate the ground vehicle list applying role, search, and country filters."""
@@ -3657,7 +3680,7 @@ class WarThunderTestDriveGUI(QMainWindow):
             combo.blockSignals(False)
         self._sync_ammo_slots()
 
-    # ── Naval: Data Loading ───────────────────────────────────────────────────
+    #  ───────────────────────────────── Naval: Data Loading ─────────────────────────────────
 
     def load_ship_data(self, ship_db_path):
         """Load Ships2.0_DB.json and populate the naval ship list widget."""
@@ -3782,7 +3805,7 @@ class WarThunderTestDriveGUI(QMainWindow):
                 self.load_image(self.naval_air02_id, self.naval_air02_image_label, "Aircraft_Previews")
                 self._populate_weapons_combo(self.naval_air02_id, self.naval_bomber_weapons_combo)
 
-    # ── Naval: Ship List Interaction ──────────────────────────────────────────
+    #  ──────────────────────────── Naval: Ship List Interaction ─────────────────────────────
 
     def filter_ships(self):
         """Re-populate the naval ship list applying role, search, and country filters."""
@@ -3872,7 +3895,7 @@ class WarThunderTestDriveGUI(QMainWindow):
             self._naval_ammo_container_layout.addWidget(row)
             self.naval_ammo_combos.append((cal, combo))
 
-    # ── Saved: Ground ─────────────────────────────────────────────────────────
+    #  ──────────────────────────────────── Saved: Ground ────────────────────────────────────
 
     def _refresh_ground_saved_ui(self):
         """Rebuild the ground Recently Used and Favourites list widgets from current lists."""
@@ -3982,7 +4005,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         self.time_combo.setCurrentIndex(random.randrange(self.time_combo.count()))
         self.weather_combo.setCurrentIndex(random.randrange(self.weather_combo.count()))
 
-    # ── Ground: User Presets ──────────────────────────────────────────────────
+    #  ──────────────────────────────── Ground: User Presets ─────────────────────────────────
 
     def _ground_save_preset(self):
         """Prompt for a name and save the current ground configuration as a user preset."""
@@ -4210,7 +4233,7 @@ class WarThunderTestDriveGUI(QMainWindow):
             self._save_saved_lists()
             self._refresh_ground_presets_ui()
 
-    # ── Presets: Import / Export ──────────────────────────────────────────────
+    #  ────────────────────────────── Presets: Import / Export ───────────────────────────────
 
     def _export_presets(self, mode):
         """Export ground or naval user presets to a JSON file."""
@@ -4302,7 +4325,7 @@ class WarThunderTestDriveGUI(QMainWindow):
 
         QMessageBox.information(self, "Import Presets", f"Imported {added} preset(s).")
 
-    # ── Saved: Naval ──────────────────────────────────────────────────────────
+    #  ──────────────────────────────────── Saved: Naval ─────────────────────────────────────
 
     def _refresh_naval_saved_ui(self):
         """Rebuild the naval Recently Used and Favourites list widgets from current lists."""
@@ -4412,7 +4435,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         self.naval_time_combo.setCurrentIndex(random.randrange(self.naval_time_combo.count()))
         self.naval_weather_combo.setCurrentIndex(random.randrange(self.naval_weather_combo.count()))
 
-    # ── Naval: User Presets ───────────────────────────────────────────────────
+    #  ───────────────────────────────── Naval: User Presets ─────────────────────────────────
 
     def _naval_save_preset(self):
         """Prompt for a name and save the current naval configuration as a user preset."""
@@ -4557,7 +4580,7 @@ class WarThunderTestDriveGUI(QMainWindow):
             self._save_saved_lists()
             self._refresh_naval_presets_ui()
 
-    # ── Shared: Image Loading ─────────────────────────────────────────────────
+    #  ──────────────────────────────── Shared: Image Loading ────────────────────────────────
 
     def load_image(self, vehicle_id, label, subfolder="Tank_Previews", size=120):
         """
@@ -4584,7 +4607,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         else:
             label.clear()
 
-    # ── Shared: Apply Router ──────────────────────────────────────────────────
+    #  ──────────────────────────────── Shared: Apply Router ─────────────────────────────────
 
     def _on_apply(self):
         """Route the Apply button to ground or naval apply based on the active mode tab."""
@@ -4612,7 +4635,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         else:
             self.apply_naval_changes()
 
-    # ── Ground: Apply Changes ─────────────────────────────────────────────────
+    #  ──────────────────────────────── Ground: Apply Changes ────────────────────────────────
 
     def _has_changes(self):
         """Return True if any ground setting differs from what is in the mission files."""
@@ -5039,7 +5062,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error updating ground files: {str(e)}")
 
-    # ── Naval: Apply Changes ──────────────────────────────────────────────────
+    #  ──────────────────────────────── Naval: Apply Changes ─────────────────────────────────
 
     def _has_naval_changes(self):
         """Return True if any naval setting differs from what is in the mission files."""
@@ -5297,7 +5320,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error updating naval files: {str(e)}")
 
-    # ── Shared: .blk Writing Helpers ──────────────────────────────────────────
+    #  ──────────────────────────── Shared: .blk Writing Helpers ─────────────────────────────
 
     def update_vehicle_in_content(self, content, vehicle_name, new_vehicle_id, new_weapons, new_bullets0=None, loadout=None):
         """
@@ -5374,7 +5397,7 @@ class WarThunderTestDriveGUI(QMainWindow):
                 break
         return ''.join(lines)
 
-    # ── Shared: DB Auto-Update ────────────────────────────────────────────────
+    #  ─────────────────────────────── Shared: DB Auto-Update ────────────────────────────────
 
     def _start_app_update_check(self):
         """Start the background app version check silently on startup."""
@@ -5440,7 +5463,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         if self._check_db_no_update and self._check_app_no_update:
             QMessageBox.information(self, "Up to Date", "Database and app are both up to date.")
 
-    # ── Theme ─────────────────────────────────────────────────────────────────
+    #  ──────────────────────────────────────── Theme ────────────────────────────────────────
 
     def _toggle_dark_mode(self, checked):
         """Toggle dark/light mode and persist the preference."""
@@ -5526,7 +5549,7 @@ class WarThunderTestDriveGUI(QMainWindow):
             except Exception as e:
                 QMessageBox.warning(self, "Custom Map", f"Could not update {os.path.basename(self.naval_mission_file)}:\n{e}")
 
-    # ── First-run / Upgrade Messages ──────────────────────────────────────────
+    #  ──────────────────────────── First-run / Upgrade Messages ─────────────────────────────
 
     def _show_updated_message(self):
         """Show an upgrade notice when the app version has changed since last run."""
@@ -5557,7 +5580,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         if msg.clickedButton() == discord_btn:
             self.open_discord()
 
-    # ── Help Dialogs & Links ──────────────────────────────────────────────────
+    #  ──────────────────────────────── Help Dialogs & Links ─────────────────────────────────
 
     def show_debug_info(self):
         """Show a debug info dialog with current file paths and their status."""
@@ -6139,7 +6162,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         webbrowser.open("https://www.youtube.com/@Ask3lad/join")
 
 
-# ── Palettes ──────────────────────────────────────────────────────────────────
+#  ────────────────────────────────────── Palettes ───────────────────────────────────────
 
 def _light_palette():
     p = QPalette()
@@ -6208,7 +6231,7 @@ def _apply_theme(dark):
             QCheckBox::indicator:unchecked:hover { border-color: #222222; }
         """)
 
-# ── Entry Point ───────────────────────────────────────────────────────────────
+#  ───────────────────────────────────── Entry Point ─────────────────────────────────────
 
 if __name__ == "__main__":
     sys.excepthook = _crash_handler
