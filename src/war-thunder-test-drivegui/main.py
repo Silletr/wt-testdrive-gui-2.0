@@ -65,7 +65,7 @@ from PyQt6.QtWidgets import (
 )
 
 from core.app_state import collect_app_state
-from core.logger import crash_handler, LOGS_DIR
+from core.logger import crash_handler
 
 
 #  ──────────────────────────────────── Path helpers ─────────────────────────────────────
@@ -715,9 +715,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         self._check_db_no_update = False
         self._check_app_no_update = False
         self._air_tab_clicks = 0
-        self.naval_ammo_combos = (
-            []
-        )  # list of (caliber_str, QComboBox) — per-caliber ammo selection
+        self.naval_ammo_combos = []  # list of (caliber_str, QComboBox) — per-caliber ammo selection
         self._dark_mode = False
         self._custom_map = True
 
@@ -4652,7 +4650,9 @@ class WarThunderTestDriveGUI(QMainWindow):
             else (
                 "naval"
                 if self.wo_naval_radio.isChecked()
-                else "aircraft" if self.wo_aircraft_radio.isChecked() else "none"
+                else "aircraft"
+                if self.wo_aircraft_radio.isChecked()
+                else "none"
             )
         )
         preset = {
@@ -5586,7 +5586,9 @@ class WarThunderTestDriveGUI(QMainWindow):
             else (
                 "naval"
                 if self.wo_naval_radio.isChecked()
-                else "aircraft" if self.wo_aircraft_radio.isChecked() else "none"
+                else "aircraft"
+                if self.wo_aircraft_radio.isChecked()
+                else "none"
             )
         )
         if current_mode != self.weapon_override_mode:
@@ -5888,7 +5890,9 @@ class WarThunderTestDriveGUI(QMainWindow):
                 else (
                     "naval"
                     if self.wo_naval_radio.isChecked()
-                    else "aircraft" if self.wo_aircraft_radio.isChecked() else "none"
+                    else "aircraft"
+                    if self.wo_aircraft_radio.isChecked()
+                    else "none"
                 )
             )
             wo_donor = (
@@ -5920,7 +5924,9 @@ class WarThunderTestDriveGUI(QMainWindow):
                 else (
                     nw_donor
                     if new_mode == "naval"
-                    else aw_donor if new_mode == "aircraft" else ""
+                    else aw_donor
+                    if new_mode == "aircraft"
+                    else ""
                 )
             )
             active_weapon = (
@@ -5929,7 +5935,9 @@ class WarThunderTestDriveGUI(QMainWindow):
                 else (
                     nw_weapon
                     if new_mode == "naval"
-                    else aw_weapon if new_mode == "aircraft" else ""
+                    else aw_weapon
+                    if new_mode == "aircraft"
+                    else ""
                 )
             )
             donor_path = (
@@ -6573,9 +6581,9 @@ class WarThunderTestDriveGUI(QMainWindow):
                 self.naval_shooter_current_ids[i] = (
                     self.naval_shooter_ids[i] or self.naval_shooter_current_ids[i]
                 )
-                self.naval_shooter_current_disabled[i] = (
-                    not self.naval_shooter_checkboxes[i].isChecked()
-                )
+                self.naval_shooter_current_disabled[
+                    i
+                ] = not self.naval_shooter_checkboxes[i].isChecked()
 
             QMessageBox.information(
                 self, "Success", "Naval changes applied successfully."

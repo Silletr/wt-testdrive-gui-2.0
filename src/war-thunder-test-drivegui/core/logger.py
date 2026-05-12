@@ -15,6 +15,7 @@ _APP_VERSION_URL = (
 
 _LOGS_DIR = "logs"
 
+
 #  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def write_crash_log(exc_type, exc_value, exc_tb):
     """Write a timestamped crash report to
