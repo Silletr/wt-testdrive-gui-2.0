@@ -64,9 +64,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.app_state import collect_app_state
-from core.logger import crash_handler, write_crash_log
-from core.logger import crash_handler, write_crash_log
+from core.app_state import *
+from core.logger import *
 
 
 #  ──────────────────────────────────── Path helpers ─────────────────────────────────────
