@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
 import os
 
 
-def _collect_app_state():
+def collect_app_state():
     """Collects current app state from the running GUI window, if available."""
     try:
         app = QApplication.instance()
