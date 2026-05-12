@@ -1,8 +1,10 @@
-import sys
-import os
 import datetime
-from loguru import logger
+import os
+import sys
 import traceback
+
+from loguru import logger
+
 from .app_state import collect_app_state
 
 
@@ -11,6 +13,7 @@ _APP_VERSION_URL = (
     "https://raw.githubusercontent.com/ask3lad/wt-testdrive-db/main/app_version.json"
 )
 
+_LOGS_DIR = "logs"
 
 #  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def write_crash_log(exc_type, exc_value, exc_tb):

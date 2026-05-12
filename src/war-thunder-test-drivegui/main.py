@@ -64,8 +64,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.app_state import *
-from core.logger import *
+from core.app_state import collect_app_state
+from core.logger import crash_handler, LOGS_DIR
 
 
 #  ──────────────────────────────────── Path helpers ─────────────────────────────────────
@@ -715,7 +715,9 @@ class WarThunderTestDriveGUI(QMainWindow):
         self._check_db_no_update = False
         self._check_app_no_update = False
         self._air_tab_clicks = 0
-        self.naval_ammo_combos = []  # list of (caliber_str, QComboBox) — per-caliber ammo selection
+        self.naval_ammo_combos = (
+            []
+        )  # list of (caliber_str, QComboBox) — per-caliber ammo selection
         self._dark_mode = False
         self._custom_map = True
 
@@ -2575,7 +2577,7 @@ class WarThunderTestDriveGUI(QMainWindow):
 
     def update_config(self, wt_path=None, db_version=None, app_version=None):
         """
-        Persist settings to config.json.
+        # Persist settings to config.json.
 
         Args:
             wt_path     (str | None): War Thunder directory path to save.
@@ -4647,20 +4649,22 @@ class WarThunderTestDriveGUI(QMainWindow):
         wo_mode = (
             "ground"
             if self.wo_ground_radio.isChecked()
-            else "naval"
-            if self.wo_naval_radio.isChecked()
-            else "aircraft"
-            if self.wo_aircraft_radio.isChecked()
-            else "none"
+            else (
+                "naval"
+                if self.wo_naval_radio.isChecked()
+                else "aircraft" if self.wo_aircraft_radio.isChecked() else "none"
+            )
         )
         preset = {
             "name": name,
             "vehicle_id": self.Selected_Vehicle_ID or self.Current_Vehicle_ID,
             "ammo_bullets": [
-                ""
-                if (c.currentData() or c.currentText())
-                in ("-- None --", "No ammo data", "Stock")
-                else (c.currentData() or c.currentText())
+                (
+                    ""
+                    if (c.currentData() or c.currentText())
+                    in ("-- None --", "No ammo data", "Stock")
+                    else (c.currentData() or c.currentText())
+                )
                 for c in self.ammo_slot_combos
             ],
             "ammo_counts": [s.value() for s in self.ammo_slot_spinboxes],
@@ -5260,9 +5264,11 @@ class WarThunderTestDriveGUI(QMainWindow):
             "name": name,
             "vehicle_id": self.naval_selected_vehicle_id
             or self.naval_current_vehicle_id,
-            "ammo": [combo.currentText() for _, combo in self.naval_ammo_combos]
-            if self.naval_ammo_combos
-            else [],
+            "ammo": (
+                [combo.currentText() for _, combo in self.naval_ammo_combos]
+                if self.naval_ammo_combos
+                else []
+            ),
             "environment": self.naval_time_combo.currentText(),
             "weather": self.naval_weather_combo.currentText(),
             "target01_id": self.naval_target01_id,
@@ -5271,12 +5277,16 @@ class WarThunderTestDriveGUI(QMainWindow):
             "target04_id": self.naval_target04_id,
             "air01_id": self.naval_air01_id,
             "air02_id": self.naval_air02_id,
-            "cas_weapons": self.naval_cas_weapons_combo.currentText()
-            if self.naval_cas_weapons_combo.isEnabled()
-            else "",
-            "bomber_weapons": self.naval_bomber_weapons_combo.currentText()
-            if self.naval_bomber_weapons_combo.isEnabled()
-            else "",
+            "cas_weapons": (
+                self.naval_cas_weapons_combo.currentText()
+                if self.naval_cas_weapons_combo.isEnabled()
+                else ""
+            ),
+            "bomber_weapons": (
+                self.naval_bomber_weapons_combo.currentText()
+                if self.naval_bomber_weapons_combo.isEnabled()
+                else ""
+            ),
             "shooter_ids": shooter_ids,
             "shooter_enabled": shooter_enabled,
         }
@@ -5573,11 +5583,11 @@ class WarThunderTestDriveGUI(QMainWindow):
         current_mode = (
             "ground"
             if self.wo_ground_radio.isChecked()
-            else "naval"
-            if self.wo_naval_radio.isChecked()
-            else "aircraft"
-            if self.wo_aircraft_radio.isChecked()
-            else "none"
+            else (
+                "naval"
+                if self.wo_naval_radio.isChecked()
+                else "aircraft" if self.wo_aircraft_radio.isChecked() else "none"
+            )
         )
         if current_mode != self.weapon_override_mode:
             return True
@@ -5875,11 +5885,11 @@ class WarThunderTestDriveGUI(QMainWindow):
             new_mode = (
                 "ground"
                 if self.wo_ground_radio.isChecked()
-                else "naval"
-                if self.wo_naval_radio.isChecked()
-                else "aircraft"
-                if self.wo_aircraft_radio.isChecked()
-                else "none"
+                else (
+                    "naval"
+                    if self.wo_naval_radio.isChecked()
+                    else "aircraft" if self.wo_aircraft_radio.isChecked() else "none"
+                )
             )
             wo_donor = (
                 self.weapon_override_donor_id or self.weapon_override_current_donor_id
@@ -5907,29 +5917,33 @@ class WarThunderTestDriveGUI(QMainWindow):
             active_donor = (
                 wo_donor
                 if new_mode == "ground"
-                else nw_donor
-                if new_mode == "naval"
-                else aw_donor
-                if new_mode == "aircraft"
-                else ""
+                else (
+                    nw_donor
+                    if new_mode == "naval"
+                    else aw_donor if new_mode == "aircraft" else ""
+                )
             )
             active_weapon = (
                 wo_weapon
                 if new_mode == "ground"
-                else nw_weapon
-                if new_mode == "naval"
-                else aw_weapon
-                if new_mode == "aircraft"
-                else ""
+                else (
+                    nw_weapon
+                    if new_mode == "naval"
+                    else aw_weapon if new_mode == "aircraft" else ""
+                )
             )
             donor_path = (
                 f"gameData/units/tankmodels/{active_donor}.blk"
                 if new_mode == "ground"
-                else f"gameData/units/ships/{active_donor}.blk"
-                if new_mode == "naval"
-                else f"gamedata/flightmodels/{active_donor}.blk"
-                if new_mode == "aircraft"
-                else ""
+                else (
+                    f"gameData/units/ships/{active_donor}.blk"
+                    if new_mode == "naval"
+                    else (
+                        f"gamedata/flightmodels/{active_donor}.blk"
+                        if new_mode == "aircraft"
+                        else ""
+                    )
+                )
             )
             velocity_enabled = (
                 hasattr(self, "velocity_override_checkbox")
@@ -6559,9 +6573,9 @@ class WarThunderTestDriveGUI(QMainWindow):
                 self.naval_shooter_current_ids[i] = (
                     self.naval_shooter_ids[i] or self.naval_shooter_current_ids[i]
                 )
-                self.naval_shooter_current_disabled[
-                    i
-                ] = not self.naval_shooter_checkboxes[i].isChecked()
+                self.naval_shooter_current_disabled[i] = (
+                    not self.naval_shooter_checkboxes[i].isChecked()
+                )
 
             QMessageBox.information(
                 self, "Success", "Naval changes applied successfully."
@@ -7136,7 +7150,7 @@ class WarThunderTestDriveGUI(QMainWindow):
             with open(log_path, "w", encoding="utf-8") as f:
                 f.write(report)
 
-            os.startfile(_LOGS_DIR)
+            os.startfile(collect_app_state._LOGS_DIR)
             QMessageBox.information(
                 self, "Debug Log Created", f"Log saved to:\n{log_path}"
             )
@@ -7198,7 +7212,7 @@ class WarThunderTestDriveGUI(QMainWindow):
         title.setFont(font)
         layout.addWidget(title)
 
-        version = QLabel("Version 2.4")
+        version = QLabel("Version 2.51")
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(version)
 
@@ -7374,90 +7388,6 @@ class WarThunderTestDriveGUI(QMainWindow):
 
         dialog.exec()
 
-    def show_changelog(self):
-        """Show the Changelog dialog."""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Changelog")
-        dialog.setMinimumWidth(360)
-        dialog.setMaximumWidth(360)
-
-        layout = QVBoxLayout(dialog)
-        layout.setSpacing(8)
-        layout.setContentsMargins(20, 20, 20, 20)
-
-        title = QLabel("Changelog")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        font = title.font()
-        font.setBold(True)
-        font.setPointSize(11)
-        title.setFont(font)
-        layout.addWidget(title)
-
-        layout.addSpacing(6)
-
-        log = QLabel(
-            "Version 2.51\n"
-            "―――――――――――――――――――――――――――――\n"
-            "  General\n"
-            "  • Full UI redesign with tabbed layout\n"
-            "  • Automatic database updates from GitHub\n"
-            "  • Added Setup Wizard for first-time setup\n"
-            "  • Added Ground and Naval mode switcher\n"
-            "  • Added Active and Selected Previews\n"
-            "  • Added ammo selection for vehicles and ships\n"
-            "  • Added time of day and weather selectors\n"
-            "  • Added target and vehicle selection\n"
-            "  • Added role filter for vehicles and ships\n"
-            "  • Added country filter buttons\n"
-            "  • Added Themed Presets (Ground and Naval)\n"
-            "  • Added Save / Load / Rename / Delete User Presets\n"
-            "  • Added Recently Used Vehicles\n"
-            "  • Added Favourites List\n"
-            "  • Added Random Time & Weather button\n"
-            "  • Added Air Test Drive tab (Coming Soon)\n"
-            "  • Added File → Check for Updates (database and app)\n"
-            "  • Added How to Use, Changelog, and Report a Bug\n"
-            "  • Added app version check on startup\n"
-            "  • Added Import / Export for user presets\n"
-            "  • Added Custom Map toggle button\n"
-            "  • Added crash log system (Logs/ folder)\n"
-            "  • Added [Debug] Open Weapon Override Folder\n"
-            "  • Added [Debug] War Thunder Datamine GitHub\n"
-            "  • Improved search bar for vehicles and ships\n\n"
-            "  Ground\n"
-            "  • Added 3 ground target slots (300m/600m/800m)\n"
-            "  • Added 2 aircraft target slots (5km/2.5km)\n"
-            "  • Added helicopter target slot (2km)\n"
-            "  • Added Themed Presets (WW1 to Modern)\n"
-            "  • Added Experimental tab with Engine Override\n"
-            "  • Added Multi-slot Ammo Loadout support\n"
-            "  • Added auto-respawn for ground targets\n"
-            "  • Added rotation dials for all 3 ground targets\n"
-            "  • Added Weapon Override — change projectile\n"
-            "  • Added Velocity Override — change projectile speed\n"
-            "  • Added Caliber Override — change projectile diameter\n\n"
-            "  Naval\n"
-            "  • Added full Naval Test Drive support\n"
-            "  • Added 3 static target slots (5km/10km/15km)\n"
-            "  • Added moving ship target slot\n"
-            "  • Added aircraft target slots (10km/25km)\n"
-            "  • Added Themed Preset (Bombardment of Iwo Jima)\n"
-            "  • Added in-game display names for naval ammunition\n"
-            "  • Added Naval Ammo Selection (per-caliber)\n"
-            "  • Added Bombarding Ships tab\n"
-            "  • Added Experimental tab with War Mode\n"
-            "  • Added Rapid Fire to Naval Experimental tab\n"
-        )
-        log.setWordWrap(True)
-        layout.addWidget(log)
-
-        layout.addSpacing(6)
-        close_btn = QPushButton("Close")
-        close_btn.clicked.connect(dialog.accept)
-        layout.addWidget(close_btn)
-
-        dialog.exec()
-
     def show_db_changelog(self):
         """Show the Database Changelog dialog."""
         try:
@@ -7568,7 +7498,8 @@ def _dark_palette():
 def _apply_theme(dark):
     QApplication.instance().setPalette(_dark_palette() if dark else _light_palette())
     if dark:
-        QApplication.instance().setStyleSheet("""
+        QApplication.instance().setStyleSheet(
+            """
             QLineEdit { color: #dcdcdc; }
             QLineEdit::placeholder { color: #888888; }
             QCheckBox { spacing: 8px; }
@@ -7583,9 +7514,11 @@ def _apply_theme(dark):
                 border-color: #0078d7;
             }
             QCheckBox::indicator:unchecked:hover { border-color: #cccccc; }
-        """)
+        """
+        )
     else:
-        QApplication.instance().setStyleSheet("""
+        QApplication.instance().setStyleSheet(
+            """
             QLineEdit { color: black; }
             QLineEdit::placeholder { color: #888888; }
             QCheckBox { spacing: 8px; }
@@ -7600,13 +7533,14 @@ def _apply_theme(dark):
                 border-color: #0078d7;
             }
             QCheckBox::indicator:unchecked:hover { border-color: #222222; }
-        """)
+        """
+        )
 
 
 #  ───────────────────────────────────── Entry Point ─────────────────────────────────────
 
 if __name__ == "__main__":
-    sys.excepthook = _crash_handler
+    sys.excepthook = crash_handler
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     app.setPalette(_light_palette())
